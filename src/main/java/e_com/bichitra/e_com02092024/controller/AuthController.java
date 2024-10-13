@@ -13,6 +13,8 @@ import e_com.bichitra.e_com02092024.security.response.UserInfoResponse;
 import e_com.bichitra.e_com02092024.security.service.UserDetailsImpl;
 import jakarta.validation.Valid;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.CommandLineRunner;
+import org.springframework.context.annotation.Bean;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.authentication.AuthenticationManager;
@@ -23,12 +25,14 @@ import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
 import java.util.*;
 import java.util.stream.Collectors;
 
 @RestController
+@RequestMapping("api/auth")
 public class AuthController {
     @Autowired
     private JwtUtils jwtUtils;
@@ -46,7 +50,7 @@ public class AuthController {
         Authentication authentication;
         try {
             authentication = authenticationManager
-                    .authenticate(new UsernamePasswordAuthenticationToken(loginRequest.getUsername(), loginRequest.getPassword()));
+                    .authenticate(new UsernamePasswordAuthenticationToken(loginRequest.getUsername(),loginRequest.getPassword()));
         } catch (AuthenticationException exception) {
             Map<String, Object> map = new HashMap<>();
             map.put("message", "Bad credentials");
@@ -118,5 +122,65 @@ public class AuthController {
         userRepository.save(user);
 
         return ResponseEntity.ok(new MessageResponse("User registered successfully!"));
+    }
+    @Bean
+    public CommandLineRunner initData(RolesRepository roleRepository, UserRepository userRepository, PasswordEncoder passwordEncoder) {
+        return args -> {
+            // Retrieve or create roles
+            Roles userRole = roleRepository.findByRoleName(AppRole.ROLE_USER)
+                    .orElseGet(() -> {
+                        Roles newUserRole = new Roles(AppRole.ROLE_USER);
+                        return roleRepository.save(newUserRole);
+                    });
+
+            Roles sellerRole = roleRepository.findByRoleName(AppRole.ROLE_SELLER)
+                    .orElseGet(() -> {
+                        Roles newSellerRole = new Roles(AppRole.ROLE_SELLER);
+                        return roleRepository.save(newSellerRole);
+                    });
+
+            Roles adminRole = roleRepository.findByRoleName(AppRole.ROLE_ADMIN)
+                    .orElseGet(() -> {
+                        Roles newAdminRole = new Roles(AppRole.ROLE_ADMIN);
+                        return roleRepository.save(newAdminRole);
+                    });
+
+            Set<Roles> userRoles = Set.of(userRole);
+            Set<Roles> sellerRoles = Set.of(sellerRole);
+            Set<Roles> adminRoles = Set.of(userRole, sellerRole, adminRole);
+
+
+            // Create users if not already present
+            if (!userRepository.existsByUserName("user1")) {
+                Users user1 = new Users("user1", "user1@example.com", passwordEncoder.encode("password1"));
+                userRepository.save(user1);
+            }
+
+            if (!userRepository.existsByUserName("seller1")) {
+                Users seller1 = new Users("seller1", "seller1@example.com", passwordEncoder.encode("password2"));
+                userRepository.save(seller1);
+            }
+
+            if (!userRepository.existsByUserName("admin")) {
+                Users admin = new Users("admin", "admin@example.com", passwordEncoder.encode("adminPass"));
+                userRepository.save(admin);
+            }
+
+            // Update roles for existing users
+            userRepository.findByUserName("user1").ifPresent(user -> {
+                user.setRoles(userRoles);
+                userRepository.save(user);
+            });
+
+            userRepository.findByUserName("seller1").ifPresent(seller -> {
+                seller.setRoles(sellerRoles);
+                userRepository.save(seller);
+            });
+
+            userRepository.findByUserName("admin").ifPresent(admin -> {
+                admin.setRoles(adminRoles);
+                userRepository.save(admin);
+            });
+        };
     }
 }
