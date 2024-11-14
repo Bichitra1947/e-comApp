@@ -64,4 +64,8 @@ public class Users {
                 inverseJoinColumns = @JoinColumn(name = "address_id "))
     private List<Address> addresses=new ArrayList<>();
 
+    @OneToOne(mappedBy = "user",cascade = CascadeType.ALL,orphanRemoval = true)
+    private Cart cart;
+
+
 }

@@ -15,7 +15,9 @@ import jakarta.validation.Valid;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.CommandLineRunner;
 import org.springframework.context.annotation.Bean;
+import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseCookie;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
@@ -23,10 +25,7 @@ import org.springframework.security.core.Authentication;
 import org.springframework.security.core.AuthenticationException;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.crypto.password.PasswordEncoder;
-import org.springframework.web.bind.annotation.PostMapping;
-import org.springframework.web.bind.annotation.RequestBody;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.bind.annotation.*;
 
 import java.util.*;
 import java.util.stream.Collectors;
@@ -62,16 +61,16 @@ public class AuthController {
 
         UserDetailsImpl userDetails = (UserDetailsImpl) authentication.getPrincipal();
 
-        String jwtToken = jwtUtils.generateTokenFromUsername(userDetails);
+        final ResponseCookie responseCookie = jwtUtils.generateJwtCookie(userDetails);
 
         List<String> roles = userDetails.getAuthorities().stream()
                 .map(item -> item.getAuthority())
                 .collect(Collectors.toList());
 
         UserInfoResponse response = new UserInfoResponse(userDetails.getId(),
-                userDetails.getUsername(),jwtToken,roles);
+                        userDetails.getUsername(), roles, responseCookie);
 
-        return ResponseEntity.ok(response);
+        return ResponseEntity.ok().header(HttpHeaders.SET_COOKIE,responseCookie.toString()).body(response);
     }
     @PostMapping("/signup")
     public ResponseEntity<?> registerUser(@Valid @RequestBody SignupRequest signUpRequest) {
@@ -123,64 +122,32 @@ public class AuthController {
 
         return ResponseEntity.ok(new MessageResponse("User registered successfully!"));
     }
-    @Bean
-    public CommandLineRunner initData(RolesRepository roleRepository, UserRepository userRepository, PasswordEncoder passwordEncoder) {
-        return args -> {
-            // Retrieve or create roles
-            Roles userRole = roleRepository.findByRoleName(AppRole.ROLE_USER)
-                    .orElseGet(() -> {
-                        Roles newUserRole = new Roles(AppRole.ROLE_USER);
-                        return roleRepository.save(newUserRole);
-                    });
 
-            Roles sellerRole = roleRepository.findByRoleName(AppRole.ROLE_SELLER)
-                    .orElseGet(() -> {
-                        Roles newSellerRole = new Roles(AppRole.ROLE_SELLER);
-                        return roleRepository.save(newSellerRole);
-                    });
+    @GetMapping("/getUserDetail")
+    public ResponseEntity<?> getUserDetails(Authentication authentication){
 
-            Roles adminRole = roleRepository.findByRoleName(AppRole.ROLE_ADMIN)
-                    .orElseGet(() -> {
-                        Roles newAdminRole = new Roles(AppRole.ROLE_ADMIN);
-                        return roleRepository.save(newAdminRole);
-                    });
+        UserDetailsImpl userDetails= (UserDetailsImpl) authentication.getPrincipal();
+        final List<String> roles = userDetails.getAuthorities().stream()
+                .map(item -> item.getAuthority())
+                .collect(Collectors.toList());
+        final UserInfoResponse userInfoResponse = new UserInfoResponse(userDetails.getId(),userDetails.getUsername(),roles);
 
-            Set<Roles> userRoles = Set.of(userRole);
-            Set<Roles> sellerRoles = Set.of(sellerRole);
-            Set<Roles> adminRoles = Set.of(userRole, sellerRole, adminRole);
+        return ResponseEntity.ok().body(userInfoResponse);
+    }
+    @GetMapping("/get-username")
+    public String currentUser(Authentication authentication){
+        if (authentication!=null){
+           return authentication.getName();
+        }
+        return "NULL";
+    }
 
+    @PostMapping("/sign-out")
+    public  ResponseEntity<?> signout(){
 
-            // Create users if not already present
-            if (!userRepository.existsByUserName("user1")) {
-                Users user1 = new Users("user1", "user1@example.com", passwordEncoder.encode("password1"));
-                userRepository.save(user1);
-            }
-
-            if (!userRepository.existsByUserName("seller1")) {
-                Users seller1 = new Users("seller1", "seller1@example.com", passwordEncoder.encode("password2"));
-                userRepository.save(seller1);
-            }
-
-            if (!userRepository.existsByUserName("admin")) {
-                Users admin = new Users("admin", "admin@example.com", passwordEncoder.encode("adminPass"));
-                userRepository.save(admin);
-            }
-
-            // Update roles for existing users
-            userRepository.findByUserName("user1").ifPresent(user -> {
-                user.setRoles(userRoles);
-                userRepository.save(user);
-            });
-
-            userRepository.findByUserName("seller1").ifPresent(seller -> {
-                seller.setRoles(sellerRoles);
-                userRepository.save(seller);
-            });
-
-            userRepository.findByUserName("admin").ifPresent(admin -> {
-                admin.setRoles(adminRoles);
-                userRepository.save(admin);
-            });
-        };
+        final ResponseCookie cleanJwtCookie = jwtUtils.getCleanJwtCookie();
+        return  ResponseEntity.ok()
+                .header(HttpHeaders.SET_COOKIE,cleanJwtCookie.toString())
+                .body(new MessageResponse("You have been sign-out successfully"));
     }
 }

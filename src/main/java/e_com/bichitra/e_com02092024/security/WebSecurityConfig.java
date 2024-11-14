@@ -79,7 +79,8 @@ public class WebSecurityConfig {
 
     @Bean
     public WebSecurityCustomizer webSecurityCustomizer() {
-        return (web -> web.ignoring().requestMatchers("/v2/api-docs",
+        return (web -> web.ignoring().requestMatchers(
+                "/v2/api-docs",
                 "/configuration/ui",
                 "/swagger-resources/**",
                 "/configuration/security",
@@ -113,28 +114,28 @@ public class WebSecurityConfig {
 
 
             // Create users if not already present
-            if (!userRepository.existsByUserName("user1")) {
-                Users user1 = new Users("user1", "user1@example.com", passwordEncoder.encode("password1"));
+            if (!userRepository.existsByUserName("user")) {
+                Users user1 = new Users("user", "user@example.com", passwordEncoder.encode("password123"));
                 userRepository.save(user1);
             }
 
-            if (!userRepository.existsByUserName("seller1")) {
-                Users seller1 = new Users("seller1", "seller1@example.com", passwordEncoder.encode("password2"));
+            if (!userRepository.existsByUserName("seller")) {
+                Users seller1 = new Users("seller", "seller@example.com", passwordEncoder.encode("password1234"));
                 userRepository.save(seller1);
             }
 
             if (!userRepository.existsByUserName("admin")) {
-                Users admin = new Users("admin", "admin@example.com", passwordEncoder.encode("adminPass"));
+                Users admin = new Users("admin", "admin@example.com", passwordEncoder.encode("admin12345"));
                 userRepository.save(admin);
             }
 
             // Update roles for existing users
-            userRepository.findByUserName("user1").ifPresent(user -> {
+            userRepository.findByUserName("user").ifPresent(user -> {
                 user.setRoles(userRoles);
                 userRepository.save(user);
             });
 
-            userRepository.findByUserName("seller1").ifPresent(seller -> {
+            userRepository.findByUserName("seller").ifPresent(seller -> {
                 seller.setRoles(sellerRoles);
                 userRepository.save(seller);
             });
@@ -145,5 +146,6 @@ public class WebSecurityConfig {
             });
         };
     }
+
 
 }
