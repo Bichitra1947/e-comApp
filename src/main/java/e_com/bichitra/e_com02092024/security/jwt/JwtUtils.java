@@ -59,7 +59,6 @@ public class JwtUtils {
     }
 
     public ResponseCookie getCleanJwtCookie(){
-
         final ResponseCookie build = ResponseCookie.from(jwtCookie, null)
                 .path("/api")
                 .build();

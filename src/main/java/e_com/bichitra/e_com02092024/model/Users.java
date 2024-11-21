@@ -6,7 +6,6 @@ import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.Size;
 import lombok.Data;
 import lombok.NoArgsConstructor;
-
 import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
@@ -57,11 +56,7 @@ public class Users {
     @OneToMany(mappedBy = "users")
     private Set<Product> products=new HashSet<>();
 
-    @ManyToMany(cascade = CascadeType.ALL,
-                fetch = FetchType.EAGER)
-    @JoinTable(name = "user_Address",
-               joinColumns = @JoinColumn(name = "user_id"),
-                inverseJoinColumns = @JoinColumn(name = "address_id "))
+    @OneToMany(mappedBy = "users",cascade = CascadeType.ALL,orphanRemoval = true)
     private List<Address> addresses=new ArrayList<>();
 
     @OneToOne(mappedBy = "user",cascade = CascadeType.ALL,orphanRemoval = true)

@@ -14,7 +14,7 @@ public class UserInfoResponse {
     private String jwtToken;
     private String username;
     private List<String> roles;
-    private ResponseCookie responseCookie;
+//    private ResponseCookie responseCookie;
 
     public UserInfoResponse(Long id, String username, List<String> roles) {
         this.id = id;
@@ -22,17 +22,10 @@ public class UserInfoResponse {
         this.roles = roles;
     }
 
-    public UserInfoResponse(Long id, String username, List<String> roles, ResponseCookie responseCookie) {
-        this.id = id;
-        this.username = username;
-        this.roles = roles;
-        this.responseCookie = responseCookie;
-    }
+//    public UserInfoResponse(Long id, String username, List<String> roles) {
+//        this.id = id;
+//        this.username = username;
+//        this.roles = roles;
+//    }
 
-    public UserInfoResponse(Long id, String jwtToken, String username, List<String> roles) {
-        this.id = id;
-        this.jwtToken = jwtToken;
-        this.username = username;
-        this.roles = roles;
-    }
 }

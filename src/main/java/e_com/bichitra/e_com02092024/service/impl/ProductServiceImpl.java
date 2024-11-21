@@ -3,11 +3,15 @@ package e_com.bichitra.e_com02092024.service.impl;
 import e_com.bichitra.e_com02092024.apiResponse.ProductResponse;
 import e_com.bichitra.e_com02092024.exception.APIException;
 import e_com.bichitra.e_com02092024.exception.ResourceNotFoundException;
+import e_com.bichitra.e_com02092024.model.Cart;
 import e_com.bichitra.e_com02092024.model.Category;
 import e_com.bichitra.e_com02092024.model.Product;
+import e_com.bichitra.e_com02092024.payload.CartDTO;
 import e_com.bichitra.e_com02092024.payload.ProductDto;
+import e_com.bichitra.e_com02092024.repository.CartRepository;
 import e_com.bichitra.e_com02092024.repository.CategoryRepository;
 import e_com.bichitra.e_com02092024.repository.ProductRepository;
+import e_com.bichitra.e_com02092024.service.CartService;
 import e_com.bichitra.e_com02092024.service.ImageUpdateService;
 import e_com.bichitra.e_com02092024.service.ProductService;
 import org.modelmapper.ModelMapper;
@@ -33,6 +37,9 @@ public class ProductServiceImpl implements ProductService {
     private ModelMapper modelMapper;
     @Autowired
     private ImageUpdateService imageUpdateService;
+    @Autowired
+    private CartRepository cartRepository;
+    private CartService cartService;
     @Value("${project.image}")
     String filePath ;
     @Override
@@ -143,21 +150,32 @@ public class ProductServiceImpl implements ProductService {
 
     @Override
     public ProductDto updatesExitingProduct(Long productId, ProductDto productDto) {
-        productRepository.findById(productId)
-                .orElseThrow(() -> new ResourceNotFoundException("product", "productId", productId));
+//        productRepository.findById(productId)
+//                .orElseThrow(() -> new ResourceNotFoundException("product", "productId", productId));
 
         Product productFromDB=productRepository.findByProductNameIgnoreCase(productDto.getProductName());
+        final Product product = productRepository.findById(productId)
+                .orElseThrow(() -> new ResourceNotFoundException("Product", "productId", productId));
         if(productFromDB!=null){
             throw new APIException(productFromDB.getProductName()+" product already exist");
         }
-
-        productFromDB.setProductName(productDto.getProductName());
-        productFromDB.setDescription(productDto.getDescription());
-        productFromDB.setPrice(productDto.getPrice());
-        productFromDB.setDiscount(productDto.getDiscount());
+        product.setProductName(productDto.getProductName());
+        product.setDescription(productDto.getDescription());
+        product.setPrice(productDto.getPrice());
+        product.setDiscount(productDto.getDiscount());
         double specialPrice = productDto.getPrice() - (productDto.getPrice() * (productDto.getDiscount() / 100));
-        productFromDB.setSpecialPrice(specialPrice);
-        final var saveProduct = productRepository.save(productFromDB);
+        product.setSpecialPrice(specialPrice);
+        final var saveProduct = productRepository.save(product);
+
+        final List<Cart> cartList = cartRepository.findCartsByProductId(productId);
+        final List<CartDTO> cartDTOList = cartList.stream().map(cart -> {
+            final CartDTO cartDTO = modelMapper.map(cart, CartDTO.class);
+            final var productDtoList = cart.getCartItems().stream()
+                    .map(cartItem -> modelMapper.map(cartItem.getProduct(), ProductDto.class)).toList();
+            cartDTO.setProducts(productDtoList);
+            return cartDTO;
+        }).toList();
+        cartDTOList.forEach(cartDTO -> cartService.updateProductInCarts(cartDTO.getCartId(),productId));
         return modelMapper.map(saveProduct, ProductDto.class);
     }
 

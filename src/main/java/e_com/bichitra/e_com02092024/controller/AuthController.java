@@ -56,20 +56,14 @@ public class AuthController {
             map.put("status", false);
             return new ResponseEntity<Object>(map, HttpStatus.NOT_FOUND);
         }
-
         SecurityContextHolder.getContext().setAuthentication(authentication);
-
         UserDetailsImpl userDetails = (UserDetailsImpl) authentication.getPrincipal();
-
         final ResponseCookie responseCookie = jwtUtils.generateJwtCookie(userDetails);
-
         List<String> roles = userDetails.getAuthorities().stream()
                 .map(item -> item.getAuthority())
                 .collect(Collectors.toList());
-
-        UserInfoResponse response = new UserInfoResponse(userDetails.getId(),
-                        userDetails.getUsername(), roles, responseCookie);
-
+        UserInfoResponse response = new UserInfoResponse(userDetails.getId(),responseCookie.toString(),
+                        userDetails.getUsername(), roles);
         return ResponseEntity.ok().header(HttpHeaders.SET_COOKIE,responseCookie.toString()).body(response);
     }
     @PostMapping("/signup")
@@ -77,11 +71,9 @@ public class AuthController {
         if (userRepository.existsByUserName(signUpRequest.getUsername())) {
             return ResponseEntity.badRequest().body(new MessageResponse("Error: Email is already in use!"));
         }
-
         if (userRepository.existsByEmail(signUpRequest.getEmail())) {
             return ResponseEntity.badRequest().body(new MessageResponse("Error: Email is already in use!"));
         }
-
         // Create new user's account
         Users user = new Users(signUpRequest.getUsername(),
                 signUpRequest.getEmail(),
